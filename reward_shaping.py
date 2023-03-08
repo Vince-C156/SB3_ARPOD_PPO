@@ -6,7 +6,7 @@ class reward_conditions:
 
     def __init__(self, chaser):
         self.chaser = chaser
-        self.time_limit = 1500
+        self.time_limit = 1000
         #self.obstacle_list = obstacle_list
     def inbounds(self): 
         if self.chaser_current_distance() < 1500.0:
@@ -181,6 +181,23 @@ class reward_formulation(reward_conditions):
             return penality, done
         return 0, False
 
+
+    def quadratic_objective(self):
+
+        x = self.chaser.state - np.concatenate((self.chaser.docking_point, np.array([0,0,0], dtype=np.float64)), axis=0)
+        Q = np.array([[2, 0, 0, 0, 0, 0],
+                      [0, 2, 0, 0, 0, 0],
+                      [0, 0, 2, 0, 0, 0],
+                      [0, 0, 0, 5, 0, 0],
+                      [0, 0, 0, 0, 5, 0],
+                      [0, 0, 0, 0, 0, 5]], dtype=np.float64)
+
+        xTQ = x.T @ Q
+        xTQx = xTQ @ x
+
+        #print(f'quadratic result is {xTQx}')
+        return xTQx
+
     def soft_penalities(self):
         """
         check if distance is not increased
@@ -189,19 +206,14 @@ class reward_formulation(reward_conditions):
         """
         penality = 0
         #l2norm = super().l2norm_state()
-        l2norm_p = super().l2norm_p()
-        l2norm_v = super().l2norm_v()
-        if not super().in_los():
-            if l2norm_p <= 200:
-                penality -= (1.0 / l2norm_p)
-        else:
-            if l2norm_p <= 500 and l2norm_v > 10.0:
-                penality -= 2.0 / l2norm_v
-            elif l2norm_p <= 100 and l2norm_v > 0.1:
-                penality -= 10.0 / l2norm_v
-            else:
-                pass
 
+        penality -= self.quadratic_objective()
+        if not super().in_los():
+            penality -= 35.0
+            l2norm_p = super().l2norm_p()
+
+            if l2norm_p < 200.0:
+                penality -= (200 - l2norm_p)**2.0
         return penality
 
     def soft_rewards(self):
@@ -209,27 +221,23 @@ class reward_formulation(reward_conditions):
         check if closer
         check if los
         """
+        #spare rewards priincple
+        #0.99 100 steps with gae gamma * lambda 1/1-gamma*lambda
+        #reward increases
+
+
+        #increase gamma 0.999
+        #initalize within 300m
+        #control freq 1
+        #episode time 1000
         reward = 0
+
         l2norm_p = super().l2norm_p()
         l2norm_v = super().l2norm_v()
 
-        if not super().in_los():
-            if l2norm_p <= 200:
-                reward += 0
-            else:
-                reward += ( (1.0 / l2norm_p ) * (l2norm_v+1.0) )
-        else:
-            #if in LOS
-            reward += ( (2.0 / l2norm_p) + (5.0 / l2norm_v+1.0) )
-            
-            """
-            if super().l2norm_p() <= 100 and super().l2norm_v() < 0.01:
-                reward += 5.0
-            elif super().l2norm_p() <= 500 and super().l2norm_v() < 10.0:
-                reward += 1.0
-            else:
-                pass
-            """
+        l2norm = l2norm_p + l2norm_v
+        if l2norm < 0.5 and super().in_los():
+            reward += 50.0
         return reward
 
     def win_conditions(self):

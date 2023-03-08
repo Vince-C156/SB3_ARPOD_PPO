@@ -338,8 +338,8 @@ class chaser_continous(cw_continous):
         reference : https://www.researchgate.net/profile/Richard-Linares/publication/331135519_Spacecraft_Rendezvous_Guidance_in_Cluttered_Environments_via_Reinforcement_Learning/links/5c672585a6fdcc404eb44d45/Spacecraft-Rendezvous-Guidance-in-Cluttered-Environments-via-Reinforcement-Learning.pdf
         """
 
-        v_bar_start = np.array([0,-1000,0], np.float64)
-        v_bar_range = np.array([100*2, 100*2, 5*2], np.float64)
+        v_bar_start = np.array([0,500,0], np.float64)
+        v_bar_range = np.array([10*2, 10*2, 2*2], np.float64)
 
         """
         two uniform distributions from [0,1) subtracted from each other
